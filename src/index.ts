@@ -1,9 +1,8 @@
 import cors from "cors"
 import express, { Request, Response } from "express"
-import { db } from "./database/knex"
 import { Video } from "./models/Video"
 import { videoDB } from "./types"
-
+import { VideoDatabase } from './database/VideoDatabase'
 
 const app = express()
 
@@ -16,6 +15,7 @@ app.listen(3003, () => {
 
 app.get("/ping", async (req: Request, res: Response) => {
     try {
+        
         res.status(200).send({ message: "Pong!" })
     } catch (error) {
         console.log(error)
@@ -34,7 +34,10 @@ app.get("/ping", async (req: Request, res: Response) => {
 
 app.get('/videos', async (req: Request, res: Response) => {
     try{
-        const videosDB: videoDB[] = await db("videos")
+        const q = req.query.q as string | undefined
+
+        const videoDatabase = new VideoDatabase()
+        const videosDB = await videoDatabase.findVideos(q)
 
         const videos: Video[] = videosDB.map((videoDB) => 
             new Video(
@@ -80,6 +83,13 @@ app.post("/videos", async (req: Request, res: Response) => {
             throw new Error("'duração' deve ser number")
         }
 
+       const videoDatabase = new VideoDatabase();
+       const videoDBExists = await videoDatabase.findVideoById(id) 
+
+       if(videoDBExists){
+            res.status(400)
+            throw new Error("'id' já existe")
+       }
 
         const newVideo: Video = new Video(
             id, 
@@ -95,7 +105,8 @@ app.post("/videos", async (req: Request, res: Response) => {
             created_at: new Date().toISOString()
         }
 
-        await db("videos").insert(newVideoDB)
+        await videoDatabase.insertVideo(newVideoDB)
+
         res.status(200).send({message: "video criado com sucesso!", newVideo})
 
     }catch (error) {
@@ -128,7 +139,9 @@ app.put("/videos/:id", async (req: Request, res: Response) => {
             throw new Error("'duração' deve ser number")
         }
 
-        const [videoDB]: videoDB[] = await db("videos").where("id", "=", `${id}`)
+        const videoDatabase = new VideoDatabase()
+        const videoDB = await videoDatabase.findVideoById(id) 
+
 
         const videoEdited = new Video(
             videoDB.id,
@@ -137,9 +150,7 @@ app.put("/videos/:id", async (req: Request, res: Response) => {
             new Date().toISOString()
         )
 
-        await db("videos")
-        .update({title: videoEdited.getTitle(), length_s: videoEdited.getLengthS(), created_at: new Date().toISOString()})
-        .where({ id })
+        await videoDatabase.updateVideo(videoEdited.getTitle(), videoEdited.getLengthS(), videoDB.id)
 
         res.status(200).send(videoEdited)
     }catch (error) {
@@ -161,10 +172,11 @@ app.delete("/videos/:id", async (req: Request, res: Response) => {
     try{
         const id = req.params.id
 
-        const result = await db("videos").where({id: id})
+        const videoDatabase = new VideoDatabase()
+        const result = await videoDatabase.findVideoById(id) 
 
     if(result){
-        await db("videos").del().where({id: id})
+        await videoDatabase.deleteVideo(id)
         res.status(200).send("video deletado com sucesso")
     } else{
         res.status(400)
