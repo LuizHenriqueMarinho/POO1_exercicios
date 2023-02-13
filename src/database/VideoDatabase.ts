@@ -21,7 +21,7 @@ export class VideoDatabase extends BaseDatabase {
         return videosDB
     }
 
-    public async findVideoById(id: string) {
+    public async findVideoById(id: string | undefined) {
         const [videoDB]: videoDB[] | undefined = await BaseDatabase.connection(VideoDatabase.TABLE_VIDEOS).where({id})
         return videoDB
     }

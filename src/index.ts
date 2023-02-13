@@ -32,7 +32,7 @@ app.get("/ping", async (req: Request, res: Response) => {
 
 const videoController = new VideoController();
 
-app.get('/videos', videoController.getVideos)
+app.get("/videos", videoController.getVideos)
 
 app.post("/videos", videoController.createVideo)
 
